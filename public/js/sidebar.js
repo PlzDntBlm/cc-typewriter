@@ -236,10 +236,11 @@ export default class Sidebar {
 
             groupHeader.innerHTML = `
                 <span>${isShrunk ? initials : group.title}</span>
-                <svg class="group-chevron h-full aspect-square transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                ${!isShrunk && group.pageIds.length > 0 ? `<svg class="group-chevron h-full aspect-square transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>` : ''}
             `;
             addDropZoneHandlers(groupHeader, group.id);
             groupHeader.addEventListener('click', (e) => {
+                if (isShrunk) return;
                 // Instantly toggle the classes for smooth animation
                 groupHeader.classList.toggle('collapsed');
                 pageListContainer.classList.toggle('hidden');
@@ -247,6 +248,7 @@ export default class Sidebar {
                 // Then update the state in the background
                 this.app.toggleGroupCollapse(group.id);
             });
+
             groupContainer.appendChild(groupHeader);
 
             const pageListContainer = document.createElement('div');
@@ -263,7 +265,10 @@ export default class Sidebar {
             });
 
             groupContainer.appendChild(pageListContainer);
+            const line = document.createElement('hr');
+
             this.pageListEl.appendChild(groupContainer);
+            this.pageListEl.appendChild(line);
         });
 
         const ungroupedPages = pages.filter(p => !groups.some(g => g.pageIds.includes(p.id)));
