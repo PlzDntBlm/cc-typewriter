@@ -7,6 +7,11 @@ class Storage {
             if (!data.groups) {
                 data.groups = [];
             }
+            data.groups.forEach(g => {
+                if (g.isCollapsed === undefined) {
+                    g.isCollapsed = false;
+                }
+            });
             return data;
         } catch (error) {
             console.error(error);
@@ -349,23 +354,52 @@ class Sidebar {
 
             li.appendChild(pageTitleEl);
             li.appendChild(deleteBtn);
-            this.pageListEl.appendChild(li);
+            return li;
         };
 
         // Render groups and their pages
         groups.forEach(group => {
+            const groupContainer = document.createElement('div');
             const groupHeader = document.createElement('div');
-            groupHeader.className = 'group-header';
+            groupHeader.className = 'group-header flex flex-row h-10 items-center';
+            if (group.isCollapsed) {
+                groupHeader.classList.add('collapsed');
+            }
+            if (isShrunk) {
+                groupHeader.classList.add('justify-center');
+            } else {
+                groupHeader.classList.add('justify-start')
+            }
             const initials = group.title.split(' ').map(w => w[0]).join('').toUpperCase();
 
-            groupHeader.textContent = isShrunk ? initials : group.title;
+            groupHeader.innerHTML = `
+                <span>${isShrunk ? initials : group.title}</span>
+                <svg class="group-chevron h-full aspect-square transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            `;
             addDropZoneHandlers(groupHeader, group.id);
-            this.pageListEl.appendChild(groupHeader);
+            groupHeader.addEventListener('click', (e) => {
+                // Prevent drop-zone from firing on click
+                if (e.target.closest('.group-chevron')) {
+                    this.app.toggleGroupCollapse(group.id);
+                }
+            });
+            groupContainer.appendChild(groupHeader);
+
+            const pageListContainer = document.createElement('div');
+            pageListContainer.className = 'flex flex-col gap-2';
+            if (group.isCollapsed) {
+                pageListContainer.classList.add('hidden');
+            }
 
             group.pageIds.forEach(pageId => {
                 const page = pages.find(p => p.id === pageId);
-                if (page) renderPageItem(page);
+                if (page) {
+                    pageListContainer.appendChild(renderPageItem(page));
+                }
             });
+
+            groupContainer.appendChild(pageListContainer);
+            this.pageListEl.appendChild(groupContainer);
         });
 
         const ungroupedPages = pages.filter(p => !groups.some(g => g.pageIds.includes(p.id)));
@@ -375,7 +409,7 @@ class Sidebar {
             ungroupedHeader.textContent = isShrunk ? 'N/A' : 'Not Assigned';
             addDropZoneHandlers(ungroupedHeader, null); // null represents the "Ungrouped" zone
             this.pageListEl.appendChild(ungroupedHeader);
-            ungroupedPages.forEach(renderPageItem);
+            ungroupedPages.forEach(page => this.pageListEl.appendChild(renderPageItem(page)));
         }
     }
 }
@@ -494,6 +528,15 @@ class App {
 
         await this.storage.save({pages: this.pages, groups: this.groups, activePageId: this.activePageId});
         this.render();
+    }
+
+    async toggleGroupCollapse(groupId) {
+        const group = this.groups.find(g => g.id === groupId);
+        if (group) {
+            group.isCollapsed = !group.isCollapsed;
+            await this.storage.save({pages: this.pages, groups: this.groups, activePageId: this.activePageId});
+            this.render();
+        }
     }
 }
 

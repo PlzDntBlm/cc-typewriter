@@ -68,4 +68,8 @@
     .drag-over {
         @apply bg-blue-500 text-white dark:bg-blue-700;
     }
+
+    .group-header.collapsed .group-chevron {
+        transform: rotate(-90deg);
+    }
 }
