@@ -135,6 +135,12 @@ class Sidebar {
         this.resizerEl = document.getElementById("resizer");
         this.toggleBtn = document.getElementById("toggle-sidebar-btn");
 
+        // --- FIX START ---
+        // Re-added the selector and event listener for the "New Page" button.
+        this.newPageBtn = document.getElementById("new-page-btn");
+        this.newPageBtn.addEventListener("click", () => this.app.createNewPage());
+        // --- FIX END ---
+
         this.isResizing = false;
 
         this.collapseIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" /></svg>`;
@@ -252,9 +258,6 @@ class App {
         }
     }
 
-    // --- FIX ---
-    // The main `render()` call was removed to prevent the cursor from jumping.
-    // Now it only saves the data and re-renders the sidebar to update the title list.
     async save() {
         const activePage = this.getActivePage();
         if (activePage) {
@@ -263,7 +266,6 @@ class App {
             activePage.content = content;
         }
         await this.storage.save({pages: this.pages, activePageId: this.activePageId});
-        // Only re-render the sidebar, not the whole app.
         this.sidebar.render(this.pages, this.activePageId);
     }
 
