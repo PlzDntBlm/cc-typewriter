@@ -208,13 +208,6 @@
   .hidden {
     display: none;
   }
-  .inline {
-    display: inline;
-  }
-  .table {
-    display: table;
-  }
-
   .h-4 {
     height: calc(var(--spacing) * 4);
   }
@@ -227,13 +220,9 @@
   .h-screen {
     height: 100vh;
   }
-  .w-1 {
-    width: calc(var(--spacing) * 1);
-  }
   .w-1\.5 {
     width: calc(var(--spacing) * 1.5);
   }
-
   .w-4 {
     width: calc(var(--spacing) * 4);
   }
@@ -249,26 +238,17 @@
   .max-w-4xl {
     max-width: var(--container-4xl);
   }
-  .flex-shrink {
-    flex-shrink: 1;
-  }
   .flex-shrink-0 {
     flex-shrink: 0;
   }
   .flex-grow {
     flex-grow: 1;
   }
-  .border-collapse {
-    border-collapse: collapse;
-  }
   .cursor-col-resize {
     cursor: col-resize;
   }
   .cursor-pointer {
     cursor: pointer;
-  }
-  .resize {
-    resize: both;
   }
   .flex-col {
     flex-direction: column;
@@ -299,12 +279,12 @@
   .rounded {
     border-radius: 0.25rem;
   }
+
+  .rounded-full {
+    border-radius: calc(infinity * 1px);
+  }
   .rounded-md {
     border-radius: var(--radius-md);
-  }
-  .border {
-    border-style: var(--tw-border-style);
-    border-width: 1px;
   }
   .border-none {
     --tw-border-style: none;
@@ -368,7 +348,6 @@
   .whitespace-nowrap {
     white-space: nowrap;
   }
-
   .text-stone-500 {
     color: var(--color-stone-500);
   }
@@ -378,21 +357,13 @@
   .text-white {
     color: var(--color-white);
   }
-  .underline {
-    text-decoration-line: underline;
-  }
   .placeholder-stone-400 {
     &::placeholder {
       color: var(--color-stone-400);
     }
   }
-
   .opacity-0 {
     opacity: 0%;
-  }
-  .outline {
-    outline-style: var(--tw-outline-style);
-    outline-width: 1px;
   }
   .transition-all {
     transition-property: all;
@@ -404,7 +375,6 @@
     transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
     transition-duration: var(--tw-duration, var(--default-transition-duration));
   }
-
   .transition-opacity {
     transition-property: opacity;
     transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
@@ -422,7 +392,6 @@
     -webkit-user-select: none;
     user-select: none;
   }
-
   .group-hover\:opacity-100 {
     &:is(:where(.group):hover *) {
       @media (hover: hover) {
@@ -476,7 +445,6 @@
       }
     }
   }
-
   .hover\:text-red-500 {
     &:hover {
       @media (hover: hover) {
@@ -548,7 +516,6 @@
       }
     }
   }
-
   .dark\:hover\:text-red-400 {
     @media (prefers-color-scheme: dark) {
       &:hover {
@@ -594,11 +561,19 @@
   #sidebar.shrunk {
     width: calc(var(--spacing) * 20);
   }
-}
-@property --tw-border-style {
-  syntax: "*";
-  inherits: false;
-  initial-value: solid;
+
+  .delete-progress-ring {
+    height: calc(var(--spacing) * 4);
+    width: calc(var(--spacing) * 4);
+  }
+
+  .delete-progress-ring-circle {
+    stroke: rgb(150, 150, 150);
+    stroke-width: 4;
+    fill: transparent;
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+  }
 }
 @property --tw-leading {
   syntax: "*";
@@ -607,11 +582,6 @@
 @property --tw-font-weight {
   syntax: "*";
   inherits: false;
-}
-@property --tw-outline-style {
-  syntax: "*";
-  inherits: false;
-  initial-value: solid;
 }
 @property --tw-duration {
   syntax: "*";
@@ -685,10 +655,8 @@
 @layer properties {
   @supports ((-webkit-hyphens: none) and (not (margin-trim: inline))) or ((-moz-orient: inline) and (not (color:rgb(from red r g b)))) {
     *, ::before, ::after, ::backdrop {
-      --tw-border-style: solid;
       --tw-leading: initial;
       --tw-font-weight: initial;
-      --tw-outline-style: solid;
       --tw-duration: initial;
       --tw-shadow: 0 0 #0000;
       --tw-shadow-color: initial;

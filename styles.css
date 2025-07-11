@@ -37,6 +37,18 @@
 
     #sidebar.shrunk {
         @apply w-20;
-        /* 5rem */
+    }
+
+    /* --- NEW STYLES FOR DELETE BUTTON --- */
+    .delete-progress-ring {
+        @apply w-4 h-4;
+    }
+
+    .delete-progress-ring-circle {
+        stroke: rgb(150, 150, 150);
+        stroke-width: 4;
+        fill: transparent;
+        transform: rotate(-90deg);
+        transform-origin: 50% 50%;
     }
 }

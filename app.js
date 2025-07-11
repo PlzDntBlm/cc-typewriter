@@ -39,7 +39,7 @@ class Editor {
     }
 
     onEditorClick(event) {
-        const target = event.target.closest('.page-link'); // Handle clicks on SVG paths
+        const target = event.target.closest('.page-link');
         if (target) {
             const pageId = target.dataset.pageId;
             if (pageId) this.app.setActivePage(pageId);
@@ -220,23 +220,80 @@ class Sidebar {
             const title = page.title || "Untitled";
             const initials = title.split(' ').map(w => w[0]).join('').toUpperCase();
 
-            // Page Title (or Initials)
             const pageTitleEl = document.createElement('div');
-            pageTitleEl.className = 'flex items-center gap-2 overflow-hidden'; // Container for title and initials
+            pageTitleEl.className = 'flex items-center gap-2 overflow-hidden';
             pageTitleEl.innerHTML = `
                 <span class="full-title truncate ${isShrunk ? 'hidden' : ''}">${title}</span>
                 <span class="initials font-bold ${isShrunk ? '' : 'hidden'}">${initials}</span>
             `;
             pageTitleEl.addEventListener("click", () => this.app.setActivePage(page.id));
 
-            // Delete Button
             const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'delete-page-btn p-1 rounded text-stone-500 hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity';
+            deleteBtn.className = 'delete-page-btn p-1 rounded-full text-stone-500 hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0';
             deleteBtn.title = `Delete "${title}"`;
-            deleteBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>`;
-            deleteBtn.addEventListener('click', (e) => {
-                e.stopPropagation(); // Prevent the page from being selected when clicking delete
-                this.app.deletePage(page.id);
+
+            const trashIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>`;
+            deleteBtn.innerHTML = trashIcon;
+
+            let pressTimer = null;
+            let animationFrame = null;
+            const DURATION = 1500;
+
+            const cancelDeletion = () => {
+                cancelAnimationFrame(animationFrame);
+                clearTimeout(pressTimer);
+                deleteBtn.innerHTML = trashIcon;
+                window.removeEventListener('mouseup', cancelDeletion);
+            };
+
+            deleteBtn.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+
+                // --- FIX START ---
+                // The animation logic is corrected here.
+                const progressCircle = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                progressCircle.setAttribute("class", "delete-progress-ring");
+                progressCircle.setAttribute("viewBox", "0 0 36 36");
+                // Set the initial state directly in the SVG markup
+                progressCircle.innerHTML = `
+                    <path class="delete-progress-ring-circle" stroke-dasharray="20, 100" d="M18 2.0845
+                      a 15.9155 15.9155 0 0 1 0 31.831
+                      a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                `;
+                deleteBtn.innerHTML = '';
+                deleteBtn.appendChild(progressCircle);
+
+                const circle = progressCircle.querySelector('.delete-progress-ring-circle');
+                const startTime = Date.now();
+
+                const animate = () => {
+                    const elapsedTime = Date.now() - startTime;
+                    let progress = elapsedTime / DURATION;
+                    if (progress > 1) progress = 1;
+
+                    // Animate the fill amount from 20% to 100%
+                    const fillAmount = 20 + (80 * progress);
+                    circle.style.strokeDasharray = `${fillAmount}, 100`;
+
+                    // Animate color from grey to red
+                    const red = 150 + (105 * progress);
+                    const green = 150 - (100 * progress);
+                    const blue = 150 - (100 * progress);
+                    circle.style.stroke = `rgb(${red}, ${green}, ${blue})`;
+
+                    if (progress < 1) {
+                        animationFrame = requestAnimationFrame(animate);
+                    }
+                };
+                animationFrame = requestAnimationFrame(animate);
+
+                pressTimer = setTimeout(() => {
+                    cancelAnimationFrame(animationFrame);
+                    this.app.deletePage(page.id);
+                }, DURATION);
+
+                window.addEventListener('mouseup', cancelDeletion, {once: true});
+                // --- FIX END ---
             });
 
             li.appendChild(pageTitleEl);
@@ -306,30 +363,19 @@ class App {
         this.render();
     }
 
-    // --- NEW METHOD ---
     async deletePage(pageIdToDelete) {
         const pageToDelete = this.pages.find(p => p.id === pageIdToDelete);
         if (!pageToDelete) return;
 
-        // Use a confirmation dialog to prevent accidental deletion
-        const confirmed = window.confirm(`Are you sure you want to delete the page "${pageToDelete.title || 'Untitled'}"?`);
-        if (!confirmed) {
-            return;
-        }
-
-        // Filter out the page to be deleted
         this.pages = this.pages.filter(p => p.id !== pageIdToDelete);
 
-        // If the deleted page was the active one, select a new active page
         if (this.activePageId === pageIdToDelete) {
-            this.activePageId = this.pages[0]?.id || null; // Select the first page or none
+            this.activePageId = this.pages[0]?.id || null;
         }
 
-        // If there are no pages left, create a new one
         if (this.pages.length === 0) {
             await this.createNewPage("My First Note", "This is your first note. Welcome!");
         } else {
-            // Save the changes and re-render the UI
             await this.storage.save({pages: this.pages, activePageId: this.activePageId});
             this.render();
         }
