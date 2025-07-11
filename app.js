@@ -4,14 +4,12 @@ class Storage {
             const response = await fetch('/api/data');
             if (!response.ok) throw new Error('Failed to fetch data from server.');
             const data = await response.json();
-            // Ensure groups array exists for backward compatibility
             if (!data.groups) {
                 data.groups = [];
             }
             return data;
         } catch (error) {
             console.error(error);
-            // Return a default structure with a groups array
             return {pages: [], groups: [], activePageId: null};
         }
     }
@@ -220,8 +218,29 @@ class Sidebar {
         const isShrunk = this.sidebarEl.classList.contains('shrunk');
         this.pageListEl.innerHTML = "";
 
+        const addDropZoneHandlers = (element, groupId) => {
+            element.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                element.classList.add('drag-over');
+            });
+            element.addEventListener('dragleave', () => {
+                element.classList.remove('drag-over');
+            });
+            element.addEventListener('drop', (e) => {
+                e.preventDefault();
+                element.classList.remove('drag-over');
+                const pageId = e.dataTransfer.getData('text/plain');
+                this.app.movePageToGroup(pageId, groupId);
+            });
+        };
+
         const renderPageItem = (page) => {
             const li = document.createElement("li");
+            li.setAttribute('draggable', 'true');
+            li.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', page.id);
+                e.dataTransfer.effectAllowed = 'move';
+            });
             li.className = "group cursor-pointer p-2 rounded hover:bg-stone-300 dark:hover:bg-stone-700 transition-colors flex items-center " + (isShrunk ? "justify-center" : "justify-between");
             if (page.id === activePageId) {
                 li.classList.add("bg-stone-300", "dark:bg-stone-700", "font-bold");
@@ -231,7 +250,7 @@ class Sidebar {
             const initials = title.split(' ').map(w => w[0]).join('').toUpperCase();
 
             const pageTitleEl = document.createElement('div');
-            pageTitleEl.className = 'flex items-center gap-2 overflow-hidden';
+            pageTitleEl.className = 'flex items-center gap-2 overflow-hidden grow';
             pageTitleEl.innerHTML = `
                 <span class="full-title truncate ${isShrunk ? 'hidden' : ''}">${title}</span>
                 <span class="initials font-bold ${isShrunk ? '' : 'hidden'}">${initials}</span>
@@ -331,25 +350,22 @@ class Sidebar {
             const groupHeader = document.createElement('div');
             groupHeader.className = 'group-header';
             groupHeader.textContent = group.title;
+            addDropZoneHandlers(groupHeader, group.id);
             this.pageListEl.appendChild(groupHeader);
 
             group.pageIds.forEach(pageId => {
                 const page = pages.find(p => p.id === pageId);
-                if (page) {
-                    renderPageItem(page);
-                }
+                if (page) renderPageItem(page);
             });
         });
 
-        // Render ungrouped pages
         const ungroupedPages = pages.filter(p => !groups.some(g => g.pageIds.includes(p.id)));
         if (ungroupedPages.length > 0) {
             const ungroupedHeader = document.createElement('div');
             ungroupedHeader.className = 'group-header mt-4';
-            if (groups.length > 0) {
-                ungroupedHeader.textContent = 'Ungrouped';
-                this.pageListEl.appendChild(ungroupedHeader);
-            }
+            ungroupedHeader.textContent = 'Ungrouped';
+            addDropZoneHandlers(ungroupedHeader, null); // null represents the "Ungrouped" zone
+            this.pageListEl.appendChild(ungroupedHeader);
             ungroupedPages.forEach(renderPageItem);
         }
     }
@@ -368,7 +384,7 @@ class App {
     async init() {
         const data = await this.storage.get();
         this.pages = data.pages;
-        this.groups = data.groups;
+        this.groups = data.groups || [];
         this.activePageId = data.activePageId;
 
         if (this.pages.length === 0) {
@@ -404,7 +420,6 @@ class App {
 
     setActivePage(id) {
         this.activePageId = id;
-        // Don't save on set active, just render
         this.render();
     }
 
@@ -452,6 +467,24 @@ class App {
             await this.storage.save({pages: this.pages, groups: this.groups, activePageId: this.activePageId});
             this.render();
         }
+    }
+
+    async movePageToGroup(pageId, targetGroupId) {
+        // Remove page from any existing group
+        this.groups.forEach(group => {
+            group.pageIds = group.pageIds.filter(id => id !== pageId);
+        });
+
+        // Add page to the new group (if a group was targeted)
+        if (targetGroupId) {
+            const targetGroup = this.groups.find(g => g.id === targetGroupId);
+            if (targetGroup) {
+                targetGroup.pageIds.push(pageId);
+            }
+        }
+
+        await this.storage.save({pages: this.pages, groups: this.groups, activePageId: this.activePageId});
+        this.render();
     }
 }
 

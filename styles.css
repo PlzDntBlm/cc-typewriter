@@ -63,4 +63,9 @@
         stroke-dasharray: 25, 100;
         stroke: rgb(255, 150, 0); /* Orange-yellow hint color */
     }
+
+    /* Style for indicating a valid drop target */
+    .drag-over {
+        @apply bg-blue-500 text-white dark:bg-blue-700;
+    }
 }
