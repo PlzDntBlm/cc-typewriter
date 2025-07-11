@@ -117,7 +117,7 @@ export default class Sidebar {
             const initials = title.split(' ').map(w => w[0]).join('').toUpperCase();
 
             const pageTitleEl = document.createElement('div');
-            pageTitleEl.className = 'flex items-center gap-2 overflow-hidden ' + (isShrunk ? "" : "grow");
+            pageTitleEl.className = 'flex items-center gap-2 overflow-hidden whitespace-nowrap overflow-hidden text-ellipsis' + (isShrunk ? "" : "grow");
             pageTitleEl.innerHTML = `
                 <span class="full-title truncate ${isShrunk ? 'hidden' : ''}">${title}</span>
                 <span class="initials font-bold ${isShrunk ? '' : 'hidden'}">${initials}</span>
@@ -222,8 +222,9 @@ export default class Sidebar {
         // Render groups and their pages
         groups.forEach(group => {
             const groupContainer = document.createElement('div');
+            groupContainer.className = 'pb-1 border-b border-stone-300 dark:border-stone-700';
             const groupHeader = document.createElement('div');
-            groupHeader.className = 'group-header flex flex-row h-10 items-center';
+            groupHeader.className = 'group-header flex flex-row h-10 items-center whitespace-nowrap overflow-hidden text-ellipsis';
             if (group.isCollapsed) {
                 groupHeader.classList.add('collapsed');
             }
@@ -240,7 +241,7 @@ export default class Sidebar {
             `;
             addDropZoneHandlers(groupHeader, group.id);
             groupHeader.addEventListener('click', (e) => {
-                if (isShrunk) return;
+                //if (isShrunk) return;
                 // Instantly toggle the classes for smooth animation
                 groupHeader.classList.toggle('collapsed');
                 pageListContainer.classList.toggle('hidden');
@@ -265,10 +266,7 @@ export default class Sidebar {
             });
 
             groupContainer.appendChild(pageListContainer);
-            const line = document.createElement('hr');
-
             this.pageListEl.appendChild(groupContainer);
-            this.pageListEl.appendChild(line);
         });
 
         const ungroupedPages = pages.filter(p => !groups.some(g => g.pageIds.includes(p.id)));
