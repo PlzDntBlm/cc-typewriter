@@ -1,7 +1,7 @@
 /**
  * @file server.js
  * @description An Express.js server to host the typewriter application and handle data persistence.
- * @version 1.1.0
+ * @version 1.2.0
  */
 
 // Import necessary modules
@@ -19,8 +19,8 @@ const app = express();
 // --- Middleware ---
 // Add middleware to parse JSON request bodies
 app.use(express.json());
-// Serve static files (HTML, CSS, JS) from the project root
-app.use(express.static(path.join(__dirname, '/')));
+// Serve static files (HTML, CSS, JS) from the 'public' directory
+app.use(express.static(path.join(__dirname, 'public')));
 
 // --- API Routes for Data Persistence ---
 
@@ -58,8 +58,10 @@ app.post('/api/data', async (req, res) => {
 });
 
 // --- Main Route ---
+// The main route now implicitly serves index.html from the 'public' directory
+// so this specific route is no longer needed. If you want to be explicit, you can keep it:
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // --- Start Server ---
