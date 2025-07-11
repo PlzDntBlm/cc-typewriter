@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Typewriter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-stone-100 text-stone-800 dark:bg-stone-900 dark:text-stone-200 overflow-hidden">
+<div id="app" class="flex h-screen">
+    <!-- Sidebar for Page Navigation -->
+    <aside id="sidebar" class="bg-stone-200 dark:bg-stone-800 w-64 flex-shrink-0 flex flex-col p-4 select-none">
+        <h2 class="text-lg font-bold mb-4">My Pages</h2>
+        <div id="page-list" class="flex-grow overflow-y-auto pr-2">
+            <!-- Page list will be dynamically inserted here -->
+        </div>
+        <button id="new-page-btn"
+                class="mt-4 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors duration-200">
+            New Page
+        </button>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow p-4 sm:p-6 md:p-8 flex justify-center overflow-y-auto">
+        <div class="w-full max-w-4xl">
+            <!-- Page Title -->
+            <input type="text" id="page-title" placeholder="Give your page a title..."
+                   class="text-3xl sm:text-4xl font-bold bg-transparent w-full border-none focus:ring-0 mb-6 px-0 placeholder-stone-400 dark:placeholder-stone-600">
+
+            <!-- Typewriter / Editor -->
+            <div id="editor"
+                 contenteditable="true"
+                 class="prose-custom w-full focus:outline-none text-lg leading-relaxed"
+                 data-placeholder="Start writing your story here...">
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

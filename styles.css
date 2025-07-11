@@ -1,0 +1,13 @@
+/* We are using Tailwind CSS via CDN, but this file is here for any custom styles. */
+
+/* Custom placeholder for contenteditable div */
+#editor.empty:before {
+    content: attr(data-placeholder);
+    color: #9ca3af; /* Corresponds to Tailwind's gray-400 */
+    position: absolute;
+    pointer-events: none; /* Allows clicking through the placeholder */
+}
+
+.dark #editor.empty:before {
+    color: #4b5563; /* Corresponds to Tailwind's gray-600 */
+}
