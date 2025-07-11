@@ -3,10 +3,16 @@ class Storage {
         try {
             const response = await fetch('/api/data');
             if (!response.ok) throw new Error('Failed to fetch data from server.');
-            return await response.json();
+            const data = await response.json();
+            // Ensure groups array exists for backward compatibility
+            if (!data.groups) {
+                data.groups = [];
+            }
+            return data;
         } catch (error) {
             console.error(error);
-            return {pages: [], activePageId: null};
+            // Return a default structure with a groups array
+            return {pages: [], groups: [], activePageId: null};
         }
     }
 
@@ -135,7 +141,10 @@ class Sidebar {
         this.resizerEl = document.getElementById("resizer");
         this.toggleBtn = document.getElementById("toggle-sidebar-btn");
         this.newPageBtn = document.getElementById("new-page-btn");
+        this.newGroupBtn = document.getElementById("new-group-btn");
+
         this.newPageBtn.addEventListener("click", () => this.app.createNewPage());
+        this.newGroupBtn.addEventListener("click", () => this.app.createGroup());
 
         this.isResizing = false;
 
@@ -195,7 +204,7 @@ class Sidebar {
         }
 
         if (this.app && this.app.pages) {
-            this.render(this.app.pages, this.app.activePageId);
+            this.render(this.app.pages, this.app.groups, this.app.activePageId);
         }
     }
 
@@ -207,12 +216,13 @@ class Sidebar {
         this.updateSidebarState();
     }
 
-    render(pages, activePageId) {
+    render(pages, groups, activePageId) {
         const isShrunk = this.sidebarEl.classList.contains('shrunk');
         this.pageListEl.innerHTML = "";
-        pages.forEach((page) => {
+
+        const renderPageItem = (page) => {
             const li = document.createElement("li");
-            li.className = "group cursor-pointer p-2 rounded hover:bg-stone-300 dark:hover:bg-stone-700 transition-colors flex items-center " + (isShrunk ? 'justify-center' : 'justify-between');
+            li.className = "group cursor-pointer p-2 rounded hover:bg-stone-300 dark:hover:bg-stone-700 transition-colors flex items-center " + (isShrunk ? "justify-center" : "justify-between");
             if (page.id === activePageId) {
                 li.classList.add("bg-stone-300", "dark:bg-stone-700", "font-bold");
             }
@@ -221,7 +231,7 @@ class Sidebar {
             const initials = title.split(' ').map(w => w[0]).join('').toUpperCase();
 
             const pageTitleEl = document.createElement('div');
-            pageTitleEl.className = "flex items-center gap-2 overflow-hidden";
+            pageTitleEl.className = 'flex items-center gap-2 overflow-hidden';
             pageTitleEl.innerHTML = `
                 <span class="full-title truncate ${isShrunk ? 'hidden' : ''}">${title}</span>
                 <span class="initials font-bold ${isShrunk ? '' : 'hidden'}">${initials}</span>
@@ -314,7 +324,34 @@ class Sidebar {
             li.appendChild(pageTitleEl);
             li.appendChild(deleteBtn);
             this.pageListEl.appendChild(li);
+        };
+
+        // Render groups and their pages
+        groups.forEach(group => {
+            const groupHeader = document.createElement('div');
+            groupHeader.className = 'group-header';
+            groupHeader.textContent = group.title;
+            this.pageListEl.appendChild(groupHeader);
+
+            group.pageIds.forEach(pageId => {
+                const page = pages.find(p => p.id === pageId);
+                if (page) {
+                    renderPageItem(page);
+                }
+            });
         });
+
+        // Render ungrouped pages
+        const ungroupedPages = pages.filter(p => !groups.some(g => g.pageIds.includes(p.id)));
+        if (ungroupedPages.length > 0) {
+            const ungroupedHeader = document.createElement('div');
+            ungroupedHeader.className = 'group-header mt-4';
+            if (groups.length > 0) {
+                ungroupedHeader.textContent = 'Ungrouped';
+                this.pageListEl.appendChild(ungroupedHeader);
+            }
+            ungroupedPages.forEach(renderPageItem);
+        }
     }
 }
 
@@ -322,6 +359,7 @@ class App {
     constructor() {
         this.storage = new Storage();
         this.pages = [];
+        this.groups = [];
         this.activePageId = null;
         this.editor = new Editor(this);
         this.sidebar = new Sidebar(this);
@@ -330,7 +368,9 @@ class App {
     async init() {
         const data = await this.storage.get();
         this.pages = data.pages;
+        this.groups = data.groups;
         this.activePageId = data.activePageId;
+
         if (this.pages.length === 0) {
             await this.createNewPage("My First Note", "This is your first note. Welcome!");
         } else {
@@ -348,16 +388,14 @@ class App {
             activePage.title = title;
             activePage.content = content;
         }
-        await this.storage.save({pages: this.pages, activePageId: this.activePageId});
-        this.sidebar.render(this.pages, this.activePageId);
+        await this.storage.save({pages: this.pages, groups: this.groups, activePageId: this.activePageId});
+        this.sidebar.render(this.pages, this.groups, this.activePageId);
     }
 
     render() {
         const activePage = this.getActivePage();
-        if (activePage) {
-            this.editor.setContent(activePage);
-        }
-        this.sidebar.render(this.pages, this.activePageId);
+        if (activePage) this.editor.setContent(activePage);
+        this.sidebar.render(this.pages, this.groups, this.activePageId);
     }
 
     getActivePage() {
@@ -366,7 +404,7 @@ class App {
 
     setActivePage(id) {
         this.activePageId = id;
-        this.storage.save({pages: this.pages, activePageId: this.activePageId});
+        // Don't save on set active, just render
         this.render();
     }
 
@@ -374,7 +412,22 @@ class App {
         const newPage = {id: `page-${Date.now()}`, title, content};
         this.pages.push(newPage);
         this.activePageId = newPage.id;
-        await this.storage.save({pages: this.pages, activePageId: this.activePageId});
+        await this.storage.save({pages: this.pages, groups: this.groups, activePageId: this.activePageId});
+        this.render();
+    }
+
+    async createGroup() {
+        const title = window.prompt("Enter a name for the new group:", "New Group");
+        if (!title) return;
+
+        const newGroup = {
+            id: `group-${Date.now()}`,
+            title,
+            pageIds: []
+        };
+
+        this.groups.push(newGroup);
+        await this.storage.save({pages: this.pages, groups: this.groups, activePageId: this.activePageId});
         this.render();
     }
 
@@ -384,6 +437,11 @@ class App {
 
         this.pages = this.pages.filter(p => p.id !== pageIdToDelete);
 
+        // Also remove the page from any group it might be in
+        this.groups.forEach(group => {
+            group.pageIds = group.pageIds.filter(id => id !== pageIdToDelete);
+        });
+
         if (this.activePageId === pageIdToDelete) {
             this.activePageId = this.pages[0]?.id || null;
         }
@@ -391,7 +449,7 @@ class App {
         if (this.pages.length === 0) {
             await this.createNewPage("My First Note", "This is your first note. Welcome!");
         } else {
-            await this.storage.save({pages: this.pages, activePageId: this.activePageId});
+            await this.storage.save({pages: this.pages, groups: this.groups, activePageId: this.activePageId});
             this.render();
         }
     }
