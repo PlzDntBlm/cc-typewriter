@@ -1,70 +1,70 @@
 /**
  * @file server.js
- * @description An Express.js server to host the typewriter application and handle data persistence.
- * @version 1.2.0
+ * @description Express server for the typewriter application.
+ * @version 1.2.2
  */
 
-// Import necessary modules
 const express = require('express');
 const path = require('path');
-const fs = require('fs').promises; // Use the promise-based version of fs
+const fs = require('fs').promises;
 
-// --- Server Configuration ---
 const PORT = process.env.PORT || 3000;
 const DB_PATH = path.join(__dirname, 'db.json');
+const DEFAULT_DATA = {pages: [], activePageId: null};
 
-// --- Initialize Express App ---
 const app = express();
 
-// --- Middleware ---
-// Add middleware to parse JSON request bodies
 app.use(express.json());
-// Serve static files (HTML, CSS, JS) from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- API Routes for Data Persistence ---
-
-// GET /api/data - To load all page data
-app.get('/api/data', async (req, res) => {
+/**
+ * Read all page data from disk and return it.
+ *
+ * Behaviour:
+ *  • If db.json exists, parse and send its contents.
+ *  • If it does not exist, create it with an empty structure and return that.
+ *
+ * @async
+ * @param {express.Request}  _req
+ * @param {express.Response} res
+ */
+async function loadDataHandler(_req, res) {
     try {
-        // Read data from db.json
-        const data = await fs.readFile(DB_PATH, 'utf8');
-        res.json(JSON.parse(data));
-    } catch (error) {
-        // If db.json doesn't exist or is empty, return a default structure
-        if (error.code === 'ENOENT') {
-            const defaultData = {pages: [], activePageId: null};
-            // Create the file with default data for future requests
-            await fs.writeFile(DB_PATH, JSON.stringify(defaultData, null, 2));
-            return res.json(defaultData);
+        const raw = await fs.readFile(DB_PATH, 'utf8');
+        res.json(JSON.parse(raw));
+    } catch (err) {
+        if (err.code === 'ENOENT') {
+            await fs.writeFile(DB_PATH, JSON.stringify(DEFAULT_DATA, null, 2));
+            return res.json(DEFAULT_DATA);
         }
-        // For other errors, send a server error response
-        console.error('Error reading from database:', error);
+        console.error('Error reading DB:', err);
         res.status(500).json({message: 'Error loading data.'});
     }
-});
+}
 
-// POST /api/data - To save all page data
-app.post('/api/data', async (req, res) => {
+/**
+ * Persist all page data received in the request body.
+ *
+ * @async
+ * @param {express.Request}  req
+ * @param {express.Response} res
+ */
+async function saveDataHandler(req, res) {
     try {
-        const data = req.body;
-        // Write the new data to db.json, formatting it for readability
-        await fs.writeFile(DB_PATH, JSON.stringify(data, null, 2));
-        res.status(200).json({message: 'Data saved successfully.'});
-    } catch (error) {
-        console.error('Error writing to database:', error);
+        await fs.writeFile(DB_PATH, JSON.stringify(req.body, null, 2));
+        res.status(200).json({message: 'Data saved.'});
+    } catch (err) {
+        console.error('Error writing DB:', err);
         res.status(500).json({message: 'Error saving data.'});
     }
-});
+}
 
-// --- Main Route ---
-// The main route now implicitly serves index.html from the 'public' directory
-// so this specific route is no longer needed. If you want to be explicit, you can keep it:
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+app.get('/api/data', loadDataHandler);
+app.post('/api/data', saveDataHandler);
 
-// --- Start Server ---
+// serve main page
+app.get('/', (_, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+
 app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+    console.log(`Server running on http://localhost:${PORT}`);
 });
