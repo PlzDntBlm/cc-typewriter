@@ -1,38 +1,68 @@
 /**
  * @file server.js
- * @description A simple Express.js server to host the typewriter application.
- * @version 1.0.0
+ * @description An Express.js server to host the typewriter application and handle data persistence.
+ * @version 1.1.0
  */
 
 // Import necessary modules
 const express = require('express');
 const path = require('path');
+const fs = require('fs').promises; // Use the promise-based version of fs
 
 // --- Server Configuration ---
 const PORT = process.env.PORT || 3000;
+const DB_PATH = path.join(__dirname, 'db.json');
 
 // --- Initialize Express App ---
 const app = express();
 
 // --- Middleware ---
-// Serve static files (HTML, CSS, JS) from the 'public' directory
-// We will assume index.html, app.js, and styles.css are in the root for now.
+// Add middleware to parse JSON request bodies
+app.use(express.json());
+// Serve static files (HTML, CSS, JS) from the project root
 app.use(express.static(path.join(__dirname, '/')));
 
-// --- Routes ---
-// A simple root route to ensure the server is working
+// --- API Routes for Data Persistence ---
+
+// GET /api/data - To load all page data
+app.get('/api/data', async (req, res) => {
+    try {
+        // Read data from db.json
+        const data = await fs.readFile(DB_PATH, 'utf8');
+        res.json(JSON.parse(data));
+    } catch (error) {
+        // If db.json doesn't exist or is empty, return a default structure
+        if (error.code === 'ENOENT') {
+            const defaultData = {pages: [], activePageId: null};
+            // Create the file with default data for future requests
+            await fs.writeFile(DB_PATH, JSON.stringify(defaultData, null, 2));
+            return res.json(defaultData);
+        }
+        // For other errors, send a server error response
+        console.error('Error reading from database:', error);
+        res.status(500).json({message: 'Error loading data.'});
+    }
+});
+
+// POST /api/data - To save all page data
+app.post('/api/data', async (req, res) => {
+    try {
+        const data = req.body;
+        // Write the new data to db.json, formatting it for readability
+        await fs.writeFile(DB_PATH, JSON.stringify(data, null, 2));
+        res.status(200).json({message: 'Data saved successfully.'});
+    } catch (error) {
+        console.error('Error writing to database:', error);
+        res.status(500).json({message: 'Error saving data.'});
+    }
+});
+
+// --- Main Route ---
 app.get('/', (req, res) => {
-    // The express.static middleware will automatically serve index.html for the '/' route
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // --- Start Server ---
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
-    console.log('Press Ctrl+C to stop the server.');
-});
-
-// --- Error Handling (Basic) ---
-app.on('error', (error) => {
-    console.error('Server error:', error);
 });

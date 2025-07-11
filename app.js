@@ -1,273 +1,267 @@
-/**
- * @file app.js
- * @description Main javascript for the smart local storage typewriter application.
- * @version 1.1.0
- */
-
-/**
- * Represents the main application controller.
- * @class
- */
-class TypewriterApp {
-    /**
-     * Initializes the application, setting up DOM elements and event listeners.
-     */
-    constructor() {
-        // Core editor elements
-        this.pageTitle = document.getElementById('page-title');
-        this.editor = document.getElementById('editor');
-
-        // Sidebar and page management elements
-        this.pageList = document.getElementById('page-list');
-        this.newPageBtn = document.getElementById('new-page-btn');
-
-        // Application state
-        this.activePageId = null;
-        this.pages = {};
-
-        this.init();
-    }
-
-    /**
-     * @private
-     * Main initialization function.
-     */
-    init() {
-        this.setupEventListeners();
-        this.loadState();
-        this.renderPageList();
-        this.loadActivePage();
-        this.handleEditorBlur(); // Set initial placeholder state
-    }
-
-    /**
-     * @private
-     * Sets up all necessary event listeners for the application.
-     */
-    setupEventListeners() {
-        // Autosave on input for both title and editor
-        this.pageTitle.addEventListener('input', () => this.saveActivePage());
-        this.editor.addEventListener('input', () => this.saveActivePage());
-
-        // Handle placeholder for contenteditable div
-        this.editor.addEventListener('focus', this.handleEditorFocus);
-        this.editor.addEventListener('blur', this.handleEditorBlur.bind(this));
-
-        // New page button
-        this.newPageBtn.addEventListener('click', () => this.createNewPage());
-
-        // Use event delegation for page list clicks
-        this.pageList.addEventListener('click', (event) => {
-            const pageElement = event.target.closest('.page-item');
-            if (pageElement && pageElement.dataset.pageId) {
-                this.switchActivePage(pageElement.dataset.pageId);
-            }
-        });
-    }
-
-    /**
-     * Saves the entire application state (all pages and active page ID) to localStorage.
-     * @private
-     */
-    saveState() {
+// --- NEW STORAGE CLASS ---
+// This class now communicates with the server API instead of localStorage.
+class Storage {
+    async get() {
         try {
-            localStorage.setItem('typewriter-pages', JSON.stringify(this.pages));
-            localStorage.setItem('typewriter-activePageId', this.activePageId);
+            const response = await fetch('/api/data');
+            if (!response.ok) {
+                throw new Error('Failed to fetch data from server.');
+            }
+            return await response.json();
         } catch (error) {
-            console.error("Error saving state to local storage:", error);
+            console.error(error);
+            // Return a default structure if the server is unreachable
+            return {pages: [], activePageId: null};
         }
     }
 
-    /**
-     * Loads the application state from localStorage.
-     * @private
-     */
-    loadState() {
+    async save(data) {
         try {
-            const savedPages = localStorage.getItem('typewriter-pages');
-            const savedActivePageId = localStorage.getItem('typewriter-activePageId');
-
-            this.pages = savedPages ? JSON.parse(savedPages) : {};
-            this.activePageId = savedActivePageId || null;
-
-            // If no pages exist, create an initial one
-            if (Object.keys(this.pages).length === 0) {
-                this.createNewPage(false); // don't save state yet
-            }
-
-            // If there's no active page ID, set it to the first available page
-            if (!this.activePageId || !this.pages[this.activePageId]) {
-                this.activePageId = Object.keys(this.pages)[0];
-            }
-
+            await fetch('/api/data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            });
         } catch (error) {
-            console.error("Error loading state from local storage:", error);
-            this.pages = {};
-            this.activePageId = null;
-        }
-    }
-
-    /**
-     * Saves the content of the currently active page to the state object.
-     * @returns {void}
-     */
-    saveActivePage() {
-        if (!this.activePageId) return;
-
-        const pageData = {
-            title: this.pageTitle.value,
-            content: this.editor.innerHTML,
-            lastModified: new Date().toISOString()
-        };
-
-        this.pages[this.activePageId] = pageData;
-
-        // Update the title in the sidebar in real-time
-        const activePageElement = this.pageList.querySelector(`[data-page-id="${this.activePageId}"]`);
-        if (activePageElement) {
-            activePageElement.textContent = pageData.title || 'Untitled Page';
-        }
-
-        this.saveState();
-        console.log(`Page ${this.activePageId} saved.`);
-    }
-
-    /**
-     * Loads a page's data into the editor fields.
-     * @private
-     */
-    loadActivePage() {
-        if (!this.activePageId || !this.pages[this.activePageId]) {
-            console.warn("Could not load active page, ID not found:", this.activePageId);
-            this.clearEditor();
-            return;
-        }
-
-        const pageData = this.pages[this.activePageId];
-        this.pageTitle.value = pageData.title || '';
-        this.editor.innerHTML = pageData.content || '';
-
-        this.updateActivePageInList();
-        this.handleEditorBlur(); // Update placeholder visibility
-    }
-
-    /**
-     * Clears the editor and title fields.
-     * @private
-     */
-    clearEditor() {
-        this.pageTitle.value = '';
-        this.editor.innerHTML = '';
-        this.handleEditorBlur();
-    }
-
-    /**
-     * Renders the list of pages in the sidebar.
-     * @private
-     */
-    renderPageList() {
-        this.pageList.innerHTML = ''; // Clear existing list
-        const pageIds = Object.keys(this.pages);
-
-        if (pageIds.length === 0) {
-            this.pageList.innerHTML = '<p class="text-stone-500">No pages yet.</p>';
-            return;
-        }
-
-        pageIds.forEach(id => {
-            const page = this.pages[id];
-            const pageElement = document.createElement('div');
-            pageElement.dataset.pageId = id;
-            pageElement.className = 'page-item p-2 rounded cursor-pointer hover:bg-stone-300 dark:hover:bg-stone-700 transition-colors duration-150';
-            pageElement.textContent = page.title || 'Untitled Page';
-            this.pageList.appendChild(pageElement);
-        });
-
-        this.updateActivePageInList();
-    }
-
-    /**
-     * Highlights the currently active page in the sidebar.
-     * @private
-     */
-    updateActivePageInList() {
-        // Remove active class from all items
-        this.pageList.querySelectorAll('.page-item').forEach(el => {
-            el.classList.remove('bg-blue-500', 'text-white');
-        });
-
-        // Add active class to the current page
-        if (this.activePageId) {
-            const activeElement = this.pageList.querySelector(`[data-page-id="${this.activePageId}"]`);
-            if (activeElement) {
-                activeElement.classList.add('bg-blue-500', 'text-white');
-            }
-        }
-    }
-
-    /**
-     * Creates a new, blank page and makes it active.
-     * @param {boolean} [save=true] - Whether to save the state immediately.
-     */
-    createNewPage(save = true) {
-        this.saveActivePage(); // Save whatever is currently being worked on first
-
-        const newPageId = `page_${new Date().getTime()}`;
-        this.pages[newPageId] = {
-            title: '',
-            content: '',
-            lastModified: new Date().toISOString()
-        };
-        this.activePageId = newPageId;
-
-        this.renderPageList();
-        this.clearEditor();
-        this.pageTitle.focus();
-
-        if (save) {
-            this.saveState();
-        }
-        console.log("Created new page:", newPageId);
-    }
-
-    /**
-     * Switches the active page.
-     * @param {string} pageId - The ID of the page to switch to.
-     */
-    switchActivePage(pageId) {
-        if (pageId === this.activePageId) return; // Don't switch if it's the same page
-
-        this.saveActivePage(); // Save the old page
-        this.activePageId = pageId;
-        this.loadActivePage();
-        this.saveState(); // Save the new active page ID
-        console.log("Switched to page:", pageId);
-    }
-
-    /**
-     * @private
-     * Handles the focus event on the editor to manage the placeholder.
-     */
-    handleEditorFocus(event) {
-        const editorDiv = event.target;
-        editorDiv.classList.remove('empty');
-    }
-
-    /**
-     * @private
-     * Handles the blur event on the editor to manage the placeholder.
-     */
-    handleEditorBlur() {
-        const editorDiv = this.editor;
-        if (editorDiv.textContent.trim() === '' && editorDiv.children.length === 0) {
-            editorDiv.classList.add('empty');
-        } else {
-            editorDiv.classList.remove('empty');
+            console.error('Failed to save data to server:', error);
         }
     }
 }
 
-// Initialize the application once the DOM is fully loaded.
-document.addEventListener('DOMContentLoaded', () => {
-    new TypewriterApp();
+class Editor {
+    constructor(app) {
+        this.app = app;
+        this.editorEl = document.getElementById("editor");
+        this.titleEl = document.getElementById("page-title");
+
+        this.titleEl.addEventListener("input", () => this.app.save());
+        this.editorEl.addEventListener("input", () => this.onEditorInput());
+        this.editorEl.addEventListener("click", (e) => this.onEditorClick(e));
+    }
+
+    onEditorInput() {
+        this._checkForLinks();
+        this.app.save();
+    }
+
+    onEditorClick(event) {
+        const target = event.target;
+        if (target.classList.contains("page-link")) {
+            const pageId = target.dataset.pageId;
+            if (pageId) {
+                this.app.setActivePage(pageId);
+            }
+        }
+    }
+
+    _checkForLinks() {
+        const LINK_REGEX = /\[\[(.*?)\]\]/g;
+        const selection = window.getSelection();
+        const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+        if (!range) return;
+
+        const currentNode = range.startContainer;
+
+        if (currentNode.nodeType === Node.TEXT_NODE) {
+            const parent = currentNode.parentNode;
+            let match;
+            while ((match = LINK_REGEX.exec(currentNode.textContent)) !== null) {
+                const [fullMatch, pageTitle] = match;
+                const linkedPage = this.app.pages.find(
+                    (p) => p.title.toLowerCase() === pageTitle.toLowerCase()
+                );
+                if (linkedPage && !parent.classList.contains("page-link")) {
+                    const linkNode = this._createLinkNode(linkedPage);
+                    const matchRange = document.createRange();
+                    matchRange.setStart(currentNode, match.index);
+                    matchRange.setEnd(currentNode, match.index + fullMatch.length);
+                    matchRange.deleteContents();
+                    matchRange.insertNode(linkNode);
+                    range.setStartAfter(linkNode);
+                    range.collapse(true);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                    return;
+                }
+            }
+        }
+    }
+
+    _createLinkNode(page) {
+        const span = document.createElement("span");
+        span.textContent = page.title;
+        span.className = "page-link";
+        span.dataset.pageId = page.id;
+        span.contentEditable = "false";
+        return span;
+    }
+
+    setContent(page) {
+        this.titleEl.value = page.title;
+        this.editorEl.innerHTML = page.content;
+        this._checkForLinksOnLoad();
+    }
+
+    _checkForLinksOnLoad() {
+        const textNodes = this._getTextNodes(this.editorEl);
+        textNodes.forEach(node => {
+            const LINK_REGEX = /\[\[(.*?)\]\]/g;
+            let match;
+            while ((match = LINK_REGEX.exec(node.textContent)) !== null) {
+                const [fullMatch, pageTitle] = match;
+                const linkedPage = this.app.pages.find(
+                    (p) => p.title.toLowerCase() === pageTitle.toLowerCase()
+                );
+                if (linkedPage) {
+                    const linkNode = this._createLinkNode(linkedPage);
+                    const range = document.createRange();
+                    range.setStart(node, match.index);
+                    range.setEnd(node, match.index + fullMatch.length);
+                    range.deleteContents();
+                    range.insertNode(linkNode);
+                    this._checkForLinksOnLoad();
+                    return;
+                }
+            }
+        });
+    }
+
+    _getTextNodes(element) {
+        let textNodes = [];
+        const walker = document.createTreeWalker(
+            element,
+            NodeFilter.SHOW_TEXT,
+            (node) => {
+                return node.parentElement.classList.contains('page-link')
+                    ? NodeFilter.FILTER_REJECT
+                    : NodeFilter.FILTER_ACCEPT;
+            },
+            false
+        );
+        let node;
+        while ((node = walker.nextNode())) {
+            textNodes.push(node);
+        }
+        return textNodes;
+    }
+
+    getContent() {
+        return {
+            title: this.titleEl.value,
+            content: this.editorEl.innerHTML,
+        };
+    }
+}
+
+class Sidebar {
+    constructor(app) {
+        this.app = app;
+        this.sidebarEl = document.getElementById("sidebar");
+        this.pageListEl = document.getElementById("page-list");
+        this.newPageBtn = document.getElementById("new-page-btn");
+
+        this.newPageBtn.addEventListener("click", () => this.app.createNewPage());
+    }
+
+    render(pages, activePageId) {
+        this.pageListEl.innerHTML = "";
+        pages.forEach((page) => {
+            const li = document.createElement("li");
+            li.textContent = page.title || "Untitled";
+            li.dataset.pageId = page.id;
+            li.className =
+                "cursor-pointer p-2 rounded hover:bg-stone-700 transition-colors";
+            if (page.id === activePageId) {
+                li.classList.add("bg-stone-600", "font-bold");
+            }
+            li.addEventListener("click", () => this.app.setActivePage(page.id));
+            this.pageListEl.appendChild(li);
+        });
+    }
+}
+
+class App {
+    constructor() {
+        this.storage = new Storage();
+        this.pages = [];
+        this.activePageId = null;
+        this.editor = new Editor(this);
+        this.sidebar = new Sidebar(this);
+    }
+
+    // Initialize the app by fetching data from the server
+    async init() {
+        const data = await this.storage.get();
+        this.pages = data.pages;
+        this.activePageId = data.activePageId;
+
+        if (this.pages.length === 0) {
+            await this.createNewPage("My First Note", "This is your first note. Welcome!");
+        } else {
+            if (!this.activePageId || !this.pages.find(p => p.id === this.activePageId)) {
+                this.activePageId = this.pages[0]?.id || null;
+            }
+            this.render();
+        }
+    }
+
+    async save() {
+        const activePage = this.getActivePage();
+        if (activePage) {
+            const {title, content} = this.editor.getContent();
+            activePage.title = title;
+            activePage.content = content;
+        }
+        await this.storage.save({
+            pages: this.pages,
+            activePageId: this.activePageId,
+        });
+        this.sidebar.render(this.pages, this.activePageId);
+    }
+
+    render() {
+        const activePage = this.getActivePage();
+        if (activePage) {
+            this.editor.setContent(activePage);
+        }
+        this.sidebar.render(this.pages, this.activePageId);
+    }
+
+    getActivePage() {
+        return this.pages.find((page) => page.id === this.activePageId);
+    }
+
+    setActivePage(id) {
+        this.activePageId = id;
+        this.render();
+        // Save the active page change
+        this.storage.save({pages: this.pages, activePageId: this.activePageId});
+    }
+
+    async createNewPage(title = "Untitled", content = "Start typing...") {
+        const newPage = {
+            id: `page-${Date.now()}`,
+            title,
+            content,
+        };
+        this.pages.push(newPage);
+        this.activePageId = newPage.id;
+
+        // Save the new state to the server
+        await this.storage.save({
+            pages: this.pages,
+            activePageId: this.activePageId
+        });
+
+        // Render the UI
+        this.render();
+    }
+}
+
+// --- UPDATED APP INITIALIZATION ---
+document.addEventListener("DOMContentLoaded", async () => {
+    const app = new App();
+    await app.init();
 });
