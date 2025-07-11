@@ -2,6 +2,10 @@
 
 @tailwind utilities;
 
+@theme {
+    --breakpoint-collapsed: 50rem;
+}
+
 /* Custom scrollbar for a cleaner look */
 ::-webkit-scrollbar {
     width: 8px;
@@ -26,11 +30,6 @@
     outline: none;
 }
 
-/*
-  This is the corrected section.
-  We are using Tailwind's @apply directive to create a component
-  class from Tailwind's utility classes.
-*/
 @layer components {
     .page-link {
         @apply text-indigo-300 bg-gray-700 px-2 py-1 rounded-md cursor-pointer font-bold;
@@ -38,5 +37,10 @@
 
     .page-link:hover {
         @apply bg-gray-600 underline;
+    }
+
+    #sidebar.shrunk {
+        @apply w-20;
+        /* 5rem */
     }
 }
