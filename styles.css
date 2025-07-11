@@ -2,10 +2,6 @@
 
 @tailwind utilities;
 
-@theme {
-    --breakpoint-collapsed: 50rem;
-}
-
 /* Custom scrollbar for a cleaner look */
 ::-webkit-scrollbar {
     width: 8px;
