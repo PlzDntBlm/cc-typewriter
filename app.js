@@ -250,7 +250,7 @@ class Sidebar {
             const initials = title.split(' ').map(w => w[0]).join('').toUpperCase();
 
             const pageTitleEl = document.createElement('div');
-            pageTitleEl.className = 'flex items-center gap-2 overflow-hidden grow';
+            pageTitleEl.className = 'flex items-center gap-2 overflow-hidden ' + (isShrunk ? "" : "grow");
             pageTitleEl.innerHTML = `
                 <span class="full-title truncate ${isShrunk ? 'hidden' : ''}">${title}</span>
                 <span class="initials font-bold ${isShrunk ? '' : 'hidden'}">${initials}</span>
@@ -258,7 +258,14 @@ class Sidebar {
             pageTitleEl.addEventListener("click", () => this.app.setActivePage(page.id));
 
             const deleteBtn = document.createElement('button');
-            deleteBtn.className = "delete-page-btn p-1 rounded-full text-stone-500 hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 " + (isShrunk ? 'hidden' : '');
+            const baseClasses = "delete-page-btn p-1 rounded-full text-stone-500 hover:text-red-500 dark:hover:text-red-400 transition-opacity flex-shrink-0 group-hover:opacity-100";
+
+            // Conditional classes for visibility based on isShrunk and screen size
+            const conditionalClasses = isShrunk
+                ? 'hidden opacity-0 sm:hidden'      // When shrunk: hidden on mobile, removed from layout on desktop
+                : 'visible opacity-100 sm:opacity-0 sm:group-hover:visible'; // When not shrunk: visible on mobile, hidden on desktop (until hover)
+
+            deleteBtn.className = `${baseClasses} ${conditionalClasses}`;
             deleteBtn.title = `Delete "${title}"`;
 
             const trashIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>`;
@@ -349,7 +356,9 @@ class Sidebar {
         groups.forEach(group => {
             const groupHeader = document.createElement('div');
             groupHeader.className = 'group-header';
-            groupHeader.textContent = group.title;
+            const initials = group.title.split(' ').map(w => w[0]).join('').toUpperCase();
+
+            groupHeader.textContent = isShrunk ? initials : group.title;
             addDropZoneHandlers(groupHeader, group.id);
             this.pageListEl.appendChild(groupHeader);
 
@@ -363,7 +372,7 @@ class Sidebar {
         if (ungroupedPages.length > 0) {
             const ungroupedHeader = document.createElement('div');
             ungroupedHeader.className = 'group-header mt-4';
-            ungroupedHeader.textContent = 'Ungrouped';
+            ungroupedHeader.textContent = isShrunk ? 'N/A' : 'Not Assigned';
             addDropZoneHandlers(ungroupedHeader, null); // null represents the "Ungrouped" zone
             this.pageListEl.appendChild(ungroupedHeader);
             ungroupedPages.forEach(renderPageItem);
