@@ -378,10 +378,12 @@ class Sidebar {
             `;
             addDropZoneHandlers(groupHeader, group.id);
             groupHeader.addEventListener('click', (e) => {
-                // Prevent drop-zone from firing on click
-                if (e.target.closest('.group-chevron')) {
-                    this.app.toggleGroupCollapse(group.id);
-                }
+                // Instantly toggle the classes for smooth animation
+                groupHeader.classList.toggle('collapsed');
+                pageListContainer.classList.toggle('hidden');
+
+                // Then update the state in the background
+                this.app.toggleGroupCollapse(group.id);
             });
             groupContainer.appendChild(groupHeader);
 
@@ -535,7 +537,6 @@ class App {
         if (group) {
             group.isCollapsed = !group.isCollapsed;
             await this.storage.save({pages: this.pages, groups: this.groups, activePageId: this.activePageId});
-            this.render();
         }
     }
 }

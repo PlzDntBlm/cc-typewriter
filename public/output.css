@@ -219,6 +219,9 @@
   .table {
     display: table;
   }
+  .aspect-square {
+    aspect-ratio: 1 / 1;
+  }
   .h-4 {
     height: calc(var(--spacing) * 4);
   }
@@ -228,11 +231,14 @@
   .h-6 {
     height: calc(var(--spacing) * 6);
   }
+  .h-10 {
+    height: calc(var(--spacing) * 10);
+  }
   .h-dvh {
     height: 100dvh;
   }
-  .h-screen {
-    height: 100vh;
+  .h-full {
+    height: 100%;
   }
   .w-1 {
     width: calc(var(--spacing) * 1);
@@ -285,6 +291,9 @@
   .flex-col {
     flex-direction: column;
   }
+  .flex-row {
+    flex-direction: row;
+  }
   .items-center {
     align-items: center;
   }
@@ -293,6 +302,9 @@
   }
   .justify-center {
     justify-content: center;
+  }
+  .justify-start {
+    justify-content: flex-start;
   }
   .gap-2 {
     gap: calc(var(--spacing) * 2);
@@ -443,6 +455,11 @@
     transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
     transition-duration: var(--tw-duration, var(--default-transition-duration));
   }
+  .transition-transform {
+    transition-property: transform, translate, scale, rotate;
+    transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+    transition-duration: var(--tw-duration, var(--default-transition-duration));
+  }
   .duration-200 {
     --tw-duration: 200ms;
     transition-duration: 200ms;
@@ -534,11 +551,6 @@
       outline-style: none;
     }
   }
-  .sm\:visible {
-    @media (width >= 40rem) {
-      visibility: visible;
-    }
-  }
   .sm\:hidden {
     @media (width >= 40rem) {
       display: none;
@@ -565,15 +577,6 @@
       &:is(:where(.group):hover *) {
         @media (hover: hover) {
           visibility: visible;
-        }
-      }
-    }
-  }
-  .sm\:group-hover\:opacity-100 {
-    @media (width >= 40rem) {
-      &:is(:where(.group):hover *) {
-        @media (hover: hover) {
-          opacity: 100%;
         }
       }
     }
@@ -710,6 +713,9 @@
     @media (prefers-color-scheme: dark) {
       background-color: var(--color-blue-700);
     }
+  }
+  .group-header.collapsed .group-chevron {
+    transform: rotate(-90deg);
   }
 }
 @property --tw-rotate-x {
