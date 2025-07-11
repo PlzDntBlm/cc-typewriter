@@ -149,7 +149,7 @@ class Sidebar {
         const handleMouseMove = (e) => {
             if (!this.isResizing) return;
             let newWidth = e.clientX;
-            if (newWidth < 120) newWidth = 120;
+            if (newWidth < 180) newWidth = 180;
             if (newWidth > 600) newWidth = 600;
             this.sidebarEl.style.width = `${newWidth}px`;
         };
@@ -184,14 +184,14 @@ class Sidebar {
         if (isShrunk) {
             this.toggleBtn.innerHTML = this.expandIcon;
             this.resizerEl.classList.add('hidden');
+            this.sidebarEl.style.width = '';
         } else {
             this.toggleBtn.innerHTML = this.collapseIcon;
             this.resizerEl.classList.remove('hidden');
+            const savedWidth = localStorage.getItem('sidebarWidth');
+            this.sidebarEl.style.width = savedWidth || '256px';
         }
 
-        // --- FIX ---
-        // The sidebar now re-renders its own list instead of calling the main app's render method.
-        // This check ensures we don't try to render before the app's pages have been loaded.
         if (this.app && this.app.pages) {
             this.render(this.app.pages, this.app.activePageId);
         }
@@ -201,9 +201,6 @@ class Sidebar {
         const isShrunk = localStorage.getItem('sidebarShrunk') === 'true';
         if (isShrunk) {
             this.sidebarEl.classList.add('shrunk');
-        } else {
-            const savedWidth = localStorage.getItem('sidebarWidth');
-            this.sidebarEl.style.width = savedWidth || '256px';
         }
         this.updateSidebarState();
     }
@@ -238,7 +235,6 @@ class App {
         this.pages = [];
         this.activePageId = null;
         this.editor = new Editor(this);
-        // The sidebar is now fully initialized before the app continues.
         this.sidebar = new Sidebar(this);
     }
 
@@ -256,6 +252,9 @@ class App {
         }
     }
 
+    // --- FIX ---
+    // The main `render()` call was removed to prevent the cursor from jumping.
+    // Now it only saves the data and re-renders the sidebar to update the title list.
     async save() {
         const activePage = this.getActivePage();
         if (activePage) {
@@ -264,7 +263,8 @@ class App {
             activePage.content = content;
         }
         await this.storage.save({pages: this.pages, activePageId: this.activePageId});
-        this.render();
+        // Only re-render the sidebar, not the whole app.
+        this.sidebar.render(this.pages, this.activePageId);
     }
 
     render() {
