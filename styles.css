@@ -39,7 +39,6 @@
         @apply w-20;
     }
 
-    /* --- NEW STYLES FOR DELETE BUTTON --- */
     .delete-progress-ring {
         @apply w-4 h-4;
     }
@@ -50,5 +49,14 @@
         fill: transparent;
         transform: rotate(-90deg);
         transform-origin: 50% 50%;
+        stroke-dasharray: 0, 100;
+        /* Animate both properties */
+        transition: stroke-dasharray 0.15s ease-out, stroke 0.15s ease-out;
+    }
+
+    /* This class now controls the hint for both fill and color */
+    .delete-progress-ring-circle.hint {
+        stroke-dasharray: 25, 100;
+        stroke: rgb(255, 150, 0); /* Orange-yellow hint color */
     }
 }

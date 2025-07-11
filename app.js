@@ -212,7 +212,7 @@ class Sidebar {
         this.pageListEl.innerHTML = "";
         pages.forEach((page) => {
             const li = document.createElement("li");
-            li.className = "group cursor-pointer p-2 rounded hover:bg-stone-300 dark:hover:bg-stone-700 transition-colors flex items-center justify-between";
+            li.className = "group cursor-pointer p-2 rounded hover:bg-stone-300 dark:hover:bg-stone-700 transition-colors flex items-center " + (isShrunk ? 'justify-center' : 'justify-between');
             if (page.id === activePageId) {
                 li.classList.add("bg-stone-300", "dark:bg-stone-700", "font-bold");
             }
@@ -221,7 +221,7 @@ class Sidebar {
             const initials = title.split(' ').map(w => w[0]).join('').toUpperCase();
 
             const pageTitleEl = document.createElement('div');
-            pageTitleEl.className = 'flex items-center gap-2 overflow-hidden';
+            pageTitleEl.className = "flex items-center gap-2 overflow-hidden";
             pageTitleEl.innerHTML = `
                 <span class="full-title truncate ${isShrunk ? 'hidden' : ''}">${title}</span>
                 <span class="initials font-bold ${isShrunk ? '' : 'hidden'}">${initials}</span>
@@ -229,7 +229,7 @@ class Sidebar {
             pageTitleEl.addEventListener("click", () => this.app.setActivePage(page.id));
 
             const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'delete-page-btn p-1 rounded-full text-stone-500 hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0';
+            deleteBtn.className = "delete-page-btn p-1 rounded-full text-stone-500 hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 " + (isShrunk ? 'hidden' : '');
             deleteBtn.title = `Delete "${title}"`;
 
             const trashIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>`;
@@ -237,63 +237,78 @@ class Sidebar {
 
             let pressTimer = null;
             let animationFrame = null;
-            const DURATION = 1500;
+            const HOLD_DURATION = 1500;
+            const HINT_THRESHOLD = 200;
+            let pressStartTime = 0;
 
-            const cancelDeletion = () => {
-                cancelAnimationFrame(animationFrame);
+            const createProgressCircle = () => {
+                const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                svg.setAttribute("class", "delete-progress-ring");
+                svg.setAttribute("viewBox", "0 0 36 36");
+                svg.innerHTML = `<path class="delete-progress-ring-circle" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>`;
+                return svg;
+            };
+
+            const onMouseUp = () => {
+                const pressDuration = Date.now() - pressStartTime;
                 clearTimeout(pressTimer);
-                deleteBtn.innerHTML = trashIcon;
-                window.removeEventListener('mouseup', cancelDeletion);
+                cancelAnimationFrame(animationFrame);
+
+                if (pressDuration < HINT_THRESHOLD) {
+                    const circleContainer = createProgressCircle();
+                    const circle = circleContainer.querySelector('.delete-progress-ring-circle');
+                    deleteBtn.innerHTML = '';
+                    deleteBtn.appendChild(circleContainer);
+
+                    requestAnimationFrame(() => {
+                        circle.classList.add('hint');
+                    });
+
+                    setTimeout(() => {
+                        deleteBtn.innerHTML = trashIcon;
+                    }, 400);
+                } else {
+                    deleteBtn.innerHTML = trashIcon;
+                }
+
+                window.removeEventListener('mouseup', onMouseUp);
             };
 
             deleteBtn.addEventListener('mousedown', (e) => {
                 e.stopPropagation();
-
-                // --- FIX START ---
-                // The animation logic is corrected here.
-                const progressCircle = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-                progressCircle.setAttribute("class", "delete-progress-ring");
-                progressCircle.setAttribute("viewBox", "0 0 36 36");
-                // Set the initial state directly in the SVG markup
-                progressCircle.innerHTML = `
-                    <path class="delete-progress-ring-circle" stroke-dasharray="20, 100" d="M18 2.0845
-                      a 15.9155 15.9155 0 0 1 0 31.831
-                      a 15.9155 15.9155 0 0 1 0 -31.831"/>
-                `;
-                deleteBtn.innerHTML = '';
-                deleteBtn.appendChild(progressCircle);
-
-                const circle = progressCircle.querySelector('.delete-progress-ring-circle');
-                const startTime = Date.now();
-
-                const animate = () => {
-                    const elapsedTime = Date.now() - startTime;
-                    let progress = elapsedTime / DURATION;
-                    if (progress > 1) progress = 1;
-
-                    // Animate the fill amount from 20% to 100%
-                    const fillAmount = 20 + (80 * progress);
-                    circle.style.strokeDasharray = `${fillAmount}, 100`;
-
-                    // Animate color from grey to red
-                    const red = 150 + (105 * progress);
-                    const green = 150 - (100 * progress);
-                    const blue = 150 - (100 * progress);
-                    circle.style.stroke = `rgb(${red}, ${green}, ${blue})`;
-
-                    if (progress < 1) {
-                        animationFrame = requestAnimationFrame(animate);
-                    }
-                };
-                animationFrame = requestAnimationFrame(animate);
+                pressStartTime = Date.now();
 
                 pressTimer = setTimeout(() => {
-                    cancelAnimationFrame(animationFrame);
-                    this.app.deletePage(page.id);
-                }, DURATION);
+                    const circleContainer = createProgressCircle();
+                    const circle = circleContainer.querySelector('.delete-progress-ring-circle');
+                    deleteBtn.innerHTML = '';
+                    deleteBtn.appendChild(circleContainer);
 
-                window.addEventListener('mouseup', cancelDeletion, {once: true});
-                // --- FIX END ---
+                    const animStartTime = Date.now();
+
+                    const animate = () => {
+                        const elapsedTime = Date.now() - animStartTime;
+                        let progress = elapsedTime / (HOLD_DURATION - HINT_THRESHOLD);
+                        if (progress > 1) progress = 1;
+
+                        const fillAmount = progress * 100;
+                        circle.style.strokeDasharray = `${fillAmount}, 100`;
+
+                        const red = 150 + (105 * progress);
+                        const green = 150 - (100 * progress);
+                        const blue = 150 - (100 * progress);
+                        circle.style.stroke = `rgb(${red}, ${green}, ${blue})`;
+
+                        if (progress < 1) {
+                            animationFrame = requestAnimationFrame(animate);
+                        } else {
+                            this.app.deletePage(page.id);
+                        }
+                    };
+                    animationFrame = requestAnimationFrame(animate);
+                }, HINT_THRESHOLD);
+
+                window.addEventListener('mouseup', onMouseUp, {once: true});
             });
 
             li.appendChild(pageTitleEl);
